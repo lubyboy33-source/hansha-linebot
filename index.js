@@ -22,7 +22,11 @@ let browserContext = null;
 
 async function getContext() {
   if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+      headless: true,
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    });
     browserContext = await browser.newContext();
   }
   return browserContext;
@@ -116,6 +120,9 @@ async function handleMessage(event) {
     });
   }
 }
+
+// 健康檢查端點（讓 UptimeRobot 保持服務運作）
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`LINE Bot 已啟動，Port: ${PORT}`));
