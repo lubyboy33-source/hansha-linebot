@@ -20,8 +20,9 @@ const SEND_CODE_URL = `${BASE_URL}/system/SendLoginCode`;
 let browser = null;
 let browserContext = null;
 
-async function getContext() {
-  if (!browser || !browser.isConnected()) {
+async function getContext(forceNew = false) {
+  if (forceNew || !browser || !browser.isConnected()) {
+    if (browser) { try { await browser.close(); } catch (_) {} }
     browser = await chromium.launch({
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
       headless: true,
@@ -33,28 +34,36 @@ async function getContext() {
 }
 
 async function doLogin(page) {
-  await page.goto(LOGIN_URL, { waitUntil: 'networkidle' });
+  await page.goto(LOGIN_URL, { waitUntil: 'load' });
   await page.fill('input[placeholder="account"]', process.env.HANSHA_USERNAME);
   await page.fill('input[placeholder="password"]', process.env.HANSHA_PASSWORD);
   await page.click('text=Sign In');
-  // Wait until we leave the login page (site may redirect to home before system)
   await page.waitForURL(url => !url.includes('/login'), { timeout: 20000 });
+  await page.waitForLoadState('load');
   console.log('登入成功');
 }
 
 async function ensureLoggedIn(page) {
-  await page.goto(SEND_CODE_URL, { waitUntil: 'networkidle' });
+  await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
   if (page.url().includes('/login') || page.url().includes('/Login')) {
     await doLogin(page);
-    await page.goto(SEND_CODE_URL, { waitUntil: 'networkidle' });
+    await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
   }
 }
 
 async function sendCode(phone, scenario) {
-  const ctx = await getContext();
-  const page = await ctx.newPage();
+  let ctx = await getContext();
+  let page = await ctx.newPage();
   try {
-    await ensureLoggedIn(page);
+    try {
+      await ensureLoggedIn(page);
+    } catch (e) {
+      // Browser context may be corrupted — recreate and retry
+      await page.close().catch(() => {});
+      ctx = await getContext(true);
+      page = await ctx.newPage();
+      await ensureLoggedIn(page);
+    }
 
     // 選 APP登入(1) 或 場景登入(2)
     await page.click(`#ra${scenario}`);
