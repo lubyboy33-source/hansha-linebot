@@ -29,7 +29,7 @@ async function doLogin(page) {
   await page.goto(LOGIN_URL, { waitUntil: 'load' });
   await page.fill('input[placeholder="account"]', process.env.HANSHA_USERNAME);
   await page.fill('input[placeholder="password"]', process.env.HANSHA_PASSWORD);
-  await page.click('text=Sign In');
+  await page.press('input[placeholder="password"]', 'Enter');
   await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 20000 });
   await page.waitForLoadState('load');
   console.log('登入成功');
