@@ -30,9 +30,9 @@ async function doLogin(page) {
   await page.fill('input[placeholder="account"]', process.env.HANSHA_USERNAME);
   await page.fill('input[placeholder="password"]', process.env.HANSHA_PASSWORD);
   await page.press('input[placeholder="password"]', 'Enter');
-  await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 20000 });
-  await page.waitForLoadState('load');
-  console.log('登入成功');
+  // Wait for login redirect to complete (site may redirect through home page)
+  await page.waitForTimeout(5000);
+  console.log('登入後 URL:', page.url());
 }
 
 async function sendCodes(phone) {
@@ -48,8 +48,8 @@ async function sendCodes(phone) {
       await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
     }
 
-    // APP登入 (Scenario 1)
-    await page.click('#ra1');
+    // APP登入 (Scenario 1) - click label because it intercepts the radio button
+    await page.click('label[for="ra1"]');
     await page.fill('input.form-control.col-md-3', phone);
     await page.click('input[type="button"].btn-primary');
     await page.waitForTimeout(2000);
@@ -57,7 +57,7 @@ async function sendCodes(phone) {
 
     // 場景登入 (Scenario 2) - 重新載入頁面以重置表單
     await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
-    await page.click('#ra2');
+    await page.click('label[for="ra2"]');
     await page.fill('input.form-control.col-md-3', phone);
     await page.click('input[type="button"].btn-primary');
     await page.waitForTimeout(2000);
