@@ -93,11 +93,9 @@ async function handleMessage(event) {
 
   const phone = phoneMatch[0];
 
-  // 從訊息其餘部分找驗證碼（4-6位數字），沒有就不觸發
-  const remaining = cleaned.replace(phone, '');
-  const codeMatch = remaining.match(/\d{4,6}/);
-  if (!codeMatch) return;
-  const code = codeMatch[0];
+  // 訊息中必須包含「驗證碼」三個字才觸發
+  if (!text.includes('驗證碼')) return;
+  const code = '123456';
 
   try {
     await sendCode(phone, 1); // APP登入
