@@ -17,20 +17,12 @@ const BASE_URL = 'https://d34k8i6r6n78f2.cloudfront.net';
 const LOGIN_URL = `${BASE_URL}/home/login`;
 const SEND_CODE_URL = `${BASE_URL}/system/SendLoginCode`;
 
-let browser = null;
-let browserContext = null;
-
-async function getContext(forceNew = false) {
-  if (forceNew || !browser || !browser.isConnected()) {
-    if (browser) { try { await browser.close(); } catch (_) {} }
-    browser = await chromium.launch({
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-      headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-    });
-    browserContext = await browser.newContext();
-  }
-  return browserContext;
+async function launchBrowser() {
+  return chromium.launch({
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    headless: true,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
 }
 
 async function doLogin(page) {
@@ -43,44 +35,35 @@ async function doLogin(page) {
   console.log('登入成功');
 }
 
-async function ensureLoggedIn(page) {
-  await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
-  if (page.url().includes('/login') || page.url().includes('/Login')) {
-    await doLogin(page);
-    await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
-  }
-}
-
-async function sendCode(phone, scenario) {
-  let ctx = await getContext();
-  let page = await ctx.newPage();
+async function sendCodes(phone) {
+  const browser = await launchBrowser();
   try {
-    try {
-      await ensureLoggedIn(page);
-    } catch (e) {
-      // Browser context may be corrupted — recreate and retry
-      await page.close().catch(() => {});
-      ctx = await getContext(true);
-      page = await ctx.newPage();
-      await ensureLoggedIn(page);
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+
+    // 導向發送驗證碼頁面，若被跳轉到登入頁則先登入
+    await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
+    if (page.url().includes('/login') || page.url().includes('/Login')) {
+      await doLogin(page);
+      await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
     }
 
-    // 選 APP登入(1) 或 場景登入(2)
-    await page.click(`#ra${scenario}`);
-
-    // 填手機號碼
+    // APP登入 (Scenario 1)
+    await page.click('#ra1');
     await page.fill('input.form-control.col-md-3', phone);
-
-    // 點重送驗證碼
     await page.click('input[type="button"].btn-primary');
-
-    // 等待請求完成
     await page.waitForTimeout(2000);
+    console.log(`已發送 APP登入 驗證碼給 ${phone}`);
 
-    const typeName = scenario === 1 ? 'APP登入' : '場景登入';
-    console.log(`已發送 ${typeName} 驗證碼給 ${phone}`);
+    // 場景登入 (Scenario 2) - 重新載入頁面以重置表單
+    await page.goto(SEND_CODE_URL, { waitUntil: 'load' });
+    await page.click('#ra2');
+    await page.fill('input.form-control.col-md-3', phone);
+    await page.click('input[type="button"].btn-primary');
+    await page.waitForTimeout(2000);
+    console.log(`已發送 場景登入 驗證碼給 ${phone}`);
   } finally {
-    await page.close();
+    await browser.close().catch(() => {});
   }
 }
 
@@ -105,17 +88,15 @@ async function handleMessage(event) {
 
   // 訊息中必須包含「驗證碼」三個字才觸發
   if (!text.includes('驗證碼')) return;
-  const code = '123456';
 
   try {
-    await sendCode(phone, 1); // APP登入
-    await sendCode(phone, 2); // 場景登入
+    await sendCodes(phone);
 
     await client.replyMessage({
       replyToken: event.replyToken,
       messages: [{
         type: 'text',
-        text: `手機號碼${phone} 已設定驗證碼，請客人於驗證碼處輸入${code}。`,
+        text: `手機號碼${phone} 已設定驗證碼，請客人於驗證碼處輸入123456。`,
       }],
     });
   } catch (err) {
