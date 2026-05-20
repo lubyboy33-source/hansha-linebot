@@ -36,8 +36,9 @@ async function doLogin(page) {
   await page.goto(LOGIN_URL, { waitUntil: 'networkidle' });
   await page.fill('input[placeholder="account"]', process.env.HANSHA_USERNAME);
   await page.fill('input[placeholder="password"]', process.env.HANSHA_PASSWORD);
-  await page.press('input[placeholder="password"]', 'Enter');
-  await page.waitForURL(`${BASE_URL}/system/**`, { timeout: 15000 });
+  await page.click('text=Sign In');
+  // Wait until we leave the login page (site may redirect to home before system)
+  await page.waitForURL(url => !url.includes('/login'), { timeout: 20000 });
   console.log('登入成功');
 }
 
