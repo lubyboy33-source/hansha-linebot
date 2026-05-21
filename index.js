@@ -76,18 +76,49 @@ app.post('/webhook', middleware(lineConfig), async (req, res) => {
   }
 });
 
+// 暫存手機號碼，等待 30 秒內出現「驗證碼」關鍵字
+// key: userId, value: { phone, timestamp }
+const pendingPhones = new Map();
+
+// 每分鐘清理過期的暫存（超過 30 秒）
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of pendingPhones) {
+    if (now - data.timestamp > 30000) pendingPhones.delete(userId);
+  }
+}, 60000);
+
 async function handleMessage(event) {
   const text = event.message.text;
+  const userId = event.source.userId;
 
   // 移除空白與常見符號後找手機號碼
   const cleaned = text.replace(/[\s\-\(\)\+\.\,\/]/g, '');
   const phoneMatch = cleaned.match(/09\d{8}/);
-  if (!phoneMatch) return;
+  const hasKeyword = text.includes('驗證碼');
 
-  const phone = phoneMatch[0];
+  let phone = null;
 
-  // 訊息中必須包含「驗證碼」三個字才觸發
-  if (!text.includes('驗證碼')) return;
+  if (phoneMatch && hasKeyword) {
+    // 同一則訊息同時包含手機號碼和「驗證碼」→ 直接觸發
+    phone = phoneMatch[0];
+    pendingPhones.delete(userId);
+  } else if (phoneMatch) {
+    // 只有手機號碼 → 暫存，等待「驗證碼」
+    pendingPhones.set(userId, { phone: phoneMatch[0], timestamp: Date.now() });
+    return;
+  } else if (hasKeyword) {
+    // 只有「驗證碼」→ 檢查 30 秒內是否有暫存的手機號碼
+    const pending = pendingPhones.get(userId);
+    if (pending && (Date.now() - pending.timestamp) <= 30000) {
+      phone = pending.phone;
+      pendingPhones.delete(userId);
+    } else {
+      return; // 沒有暫存手機號碼，忽略
+    }
+  } else {
+    return; // 兩者都沒有，忽略
+  }
 
   try {
     await sendCodes(phone);
