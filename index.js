@@ -127,7 +127,7 @@ async function handleMessage(event) {
       replyToken: event.replyToken,
       messages: [{
         type: 'text',
-        text: `手機號碼${phone} 已設定驗證碼，請客人於驗證碼處輸入123456。`,
+        text: `手機號碼${phone} 已設定驗證碼，請客人於驗證碼處輸入123456。此驗證碼2小時內有效。`,
       }],
     });
   } catch (err) {
