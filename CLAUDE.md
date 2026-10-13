@@ -21,7 +21,7 @@ LINE Bot 自動化工具，部署於 Render.com 雲端。當群組或私訊收�
 - **LINE SDK**：@line/bot-sdk
 - **瀏覽器自動化**：Playwright（Headless Chromium）
 - **部署**：Render.com（Free tier，Docker 部署）
-- **保活**：cron-job.org 每 5 分鐘 ping /health 防止 Render 睡眠
+- **保活**：cron-job.org 每 5 分鐘 ping /health 防止 Render 睡眠；另有 GitHub Actions `.github/workflows/keepalive.yml` 每 5 分鐘補打一次（repo 60 天無 commit 時 GitHub 會自動停用排程，需到 Actions 頁重新啟用）
 
 ## 目標網站
 - 登入頁：`https://d34k8i6r6n78f2.cloudfront.net/home/login`
@@ -65,3 +65,8 @@ LINE Bot 自動化工具，部署於 Render.com 雲端。當群組或私訊收�
 - `parse.js`：手機號碼與關鍵字解析
 - `Dockerfile`：使用 node:20-slim + 系統 Chromium
 - `railway.toml`：指定 Dockerfile 建置（舊的 Railway 設定，目前用 Render）
+
+## 2026-10-13 第一則沒反應、第二則才觸發
+- LINE Developers 檢查：Webhook redelivery 與 Error statistics aggregation 原本皆為關閉
+- 推測 Render 休眠，第一則在喚醒過程中遺失且 LINE 不重送；已加 GitHub Actions 保活
+- Render / GitHub 密碼遺失，暫無法看 Render Logs
