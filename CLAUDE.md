@@ -71,4 +71,5 @@ LINE Bot 自動化工具，部署於 Render.com 雲端。當群組或私訊收�
 - Render Logs 證實：09:35:57 才出現「LINE Bot 已啟動」（休眠喚醒），第一則訊息遺失；09:37 第二則正常觸發，處理耗時 32 秒
 - 10/8–10/12 每天休眠喚醒約 5–14 次，cron-job.org 保活實際未生效（帳號無法登入確認）
 - 已加 GitHub Actions 保活，手動執行 #1 成功
+- LINE Developers 已開啟 Webhook redelivery（休眠時 LINE 會補送，程式以 webhookEventId 去重）與 Error statistics aggregation（Messaging API 分頁可看送達錯誤統計）
 - Render 用 GitHub（lubyboy33-source）登入；Logs 可搜尋「已啟動」看休眠喚醒次數
