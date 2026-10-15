@@ -21,7 +21,7 @@ LINE Bot 自動化工具，部署於 Render.com 雲端。當群組或私訊收�
 - **LINE SDK**：@line/bot-sdk
 - **瀏覽器自動化**：Playwright（Headless Chromium）
 - **部署**：Render.com（Free tier，Docker 部署）
-- **保活**：cron-job.org 每 5 分鐘 ping /health 防止 Render 睡眠；另有 GitHub Actions `.github/workflows/keepalive.yml` 每 5 分鐘補打一次（repo 60 天無 commit 時 GitHub 會自動停用排程，需到 Actions 頁重新啟用）
+- **保活**：index.js 每 10 分鐘透過 RENDER_EXTERNAL_URL 自我 ping /health（主要機制）；GitHub Actions `keepalive.yml` 每小時健康監控，連不上約 5 分鐘才失敗寄信。cron-job.org 帳號已無法登入，實測未生效
 
 ## 目標網站
 - 登入頁：`https://d34k8i6r6n78f2.cloudfront.net/home/login`
@@ -73,3 +73,8 @@ LINE Bot 自動化工具，部署於 Render.com 雲端。當群組或私訊收�
 - 已加 GitHub Actions 保活，手動執行 #1 成功
 - LINE Developers 已開啟 Webhook redelivery（休眠時 LINE 會補送，程式以 webhookEventId 去重）與 Error statistics aggregation（Messaging API 分頁可看送達錯誤統計）
 - Render 用 GitHub（lubyboy33-source）登入；Logs 可搜尋「已啟動」看休眠喚醒次數
+
+## 2026-10-15 GitHub keepalive 失敗通知
+- GitHub 排程實測約 3-5 小時才跑一次（設定每 5 分鐘），無法保活；10/13-10/14 Render 仍每天休眠喚醒十餘次
+- 10/15 03:13 那次失敗：排程打到時主機休眠，喚醒期間 3 次重試都失敗
+- 改為程式自我保活 + GitHub 改成每小時健康監控（容許喚醒重試）

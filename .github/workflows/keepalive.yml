@@ -1,21 +1,23 @@
-# Render 免費方案閒置約 15 分鐘會休眠，休眠時第一則 LINE 訊息會在喚醒過程中遺失。
-# 與 cron-job.org 並行，作為第二道保活（GitHub 排程可能延遲數分鐘，僅作補強）。
+# 健康監控：每小時確認 Bot 能回應 /health，真的連不上才失敗並寄信通知。
+# 保活已改由 index.js 自我 ping 負責（GitHub 排程實測約 3-5 小時才跑一次，無法保活）。
+# 容許休眠喚醒：最多重試約 5 分鐘，避免喚醒過程中的暫時錯誤造成誤報。
 name: keepalive
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     steps:
-      - name: Ping /health
+      - name: Check /health
         run: |
-          for i in 1 2 3; do
-            if curl -fsS --max-time 60 https://hansha-linebot.onrender.com/health; then exit 0; fi
-            sleep 10
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 90 https://hansha-linebot.onrender.com/health; then exit 0; fi
+            echo "第 $i 次失敗，30 秒後重試"
+            sleep 30
           done
           exit 1

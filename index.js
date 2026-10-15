@@ -227,5 +227,16 @@ app.post('/webhook', middleware(lineConfig), (req, res) => {
 // 健康檢查端點（cron-job.org 定時 ping，保持服務運作）
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// 自我保活：Render 免費方案閒置 15 分鐘會休眠，休眠時第一則 LINE 訊息會遺失。
+// 透過公開網址打自己的 /health（經 Render 入口，算外部流量），每 10 分鐘一次。
+// RENDER_EXTERNAL_URL 由 Render 自動提供；本機執行時沒有這個變數就不啟用。
+const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+if (SELF_URL) {
+  setInterval(() => {
+    fetch(`${SELF_URL}/health`, { signal: AbortSignal.timeout(30000) })
+      .catch((err) => log('自我保活失敗：', err.message));
+  }, 10 * 60 * 1000);
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => log(`LINE Bot 已啟動，Port: ${PORT}`));
